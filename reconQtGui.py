@@ -112,8 +112,93 @@ class MVDConfigDialog(QtGui.QDialog):
         return configDialog.params
 
 
+import pyfits
+import numpy as np
+import scipy.ndimage as spnd
+from mvd_algorithms import mvd_lr, mvd_wiener, mvd_map_tikhonov
+
+
+def processIndices(indexString):
+    '''This function takes an index string as input and produce the index list.
+    Supported symbols include : and ,
+    '''
+    l = []
+    phrases = indexString.split(',')
+    for phrase in phrases:
+        if ':' in phrase:
+            words = phrase.split(':')
+            if len(words) == 2 and words[0].strip().isdigit() and\
+                    words[1].strip().isdigit():
+                l = l + range(int(words[0]), int(words[1])+1)
+            else:
+                return []
+        else:
+            if phrase.strip().isdigit():
+                l.append(int(phrase))
+            else:
+                return []
+    return l
+
+
+def generateFileName(inputDir, pattern, idx):
+    return os.path.join(inputDir, pattern.replace(r'{a}', str(idx)))
+
+
+def mvdFusion(params):
+    if not params['outFile'].endswith('.fits'):
+        params['outFile'] = params['outFile'] + '.fits'
+    psf0 = pyfits.getdata(params['psfFile'])
+    # generate actual indices
+    params['indices'] = processIndices(params['indicesString'])
+    imgList = []
+    psfList = []
+    print 'loading inputs...'
+    progress = 0.0
+    min_idx = params['indices'][0]
+    for idx in params['indices']:
+        # fname = params['pattern'] % (idx)
+        fname = generateFileName(params['inputDir'], params['pattern'], idx)
+        img = pyfits.getdata(fname, 0, header=False)
+        img = spnd.interpolation.shift(img, params['offset'])
+        angle = (idx-min_idx)*params['angularStep']
+        img = spnd.interpolation.rotate(img, -angle, reshape=False)
+        psf = spnd.interpolation.rotate(psf0, -angle, reshape=False)
+        psf = psf/np.sum(psf)
+        imgList.append(img)
+        psfList.append(psf)
+        progress = progress + 1.0/len(params['indices'])
+        sys.stdout.write('\r%.2f%%' % (progress*100.0))
+        sys.stdout.flush()
+    sys.stdout.write('\n')
+    print 'finished loading and transforming data from files'
+    # create initial image
+    initImg = np.zeros(imgList[0].shape)
+    print 'creating additive image as initial guess'
+    for img in imgList:
+        initImg = initImg + img
+    initImg = initImg / float(len(params['indices']))
+    # do actual work
+    print 'reconstructing with %s method...' % (params['method'])
+    if params['method'] == 'Lucy-Richardson':
+        finalImg = mvd_lr(initImg, imgList, psfList, params['maxIter'])
+    elif params['method'] == 'MVD-Wiener':
+        finalImg = mvd_wiener(initImg, imgList, psfList,
+                              params['maxIter'], params['mu'])
+    elif params['method'] == 'MVD-MAPGG':
+        finalImg = mvd_map_tikhonov(initImg, imgList, psfList,
+                                    params['maxIter'], params['mu']**2)
+    else:  # including 'Fusion'
+        finalImg = initImg
+    print 'done.'
+    outFile = os.path.join(params['inputDir'], params['outFile'])
+    print 'saving to %s...' % (outFile)
+    hdu = pyfits.PrimaryHDU(finalImg)
+    hdu.writeto(outFile, clobber=True)
+    print 'saved.'
+
+
 import sys
 
 if __name__ == '__main__':
     params = MVDConfigDialog.getOptions(sys.argv)
-    print json.dumps(params, indent=2)
+    mvdFusion(params)
