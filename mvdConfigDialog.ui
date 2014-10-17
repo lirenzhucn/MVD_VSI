@@ -122,7 +122,14 @@
        </widget>
       </item>
       <item>
-       <widget class="QSpinBox" name="mSpX0"/>
+       <widget class="QSpinBox" name="mSpX0">
+        <property name="minimum">
+         <number>-300</number>
+        </property>
+        <property name="maximum">
+         <number>300</number>
+        </property>
+       </widget>
       </item>
       <item>
        <widget class="QLabel" name="label_5">
@@ -152,7 +159,14 @@
        </widget>
       </item>
       <item>
-       <widget class="QSpinBox" name="mSpY0"/>
+       <widget class="QSpinBox" name="mSpY0">
+        <property name="minimum">
+         <number>-300</number>
+        </property>
+        <property name="maximum">
+         <number>300</number>
+        </property>
+       </widget>
       </item>
       <item>
        <widget class="QLabel" name="label_6">
