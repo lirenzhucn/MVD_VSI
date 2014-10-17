@@ -15,22 +15,30 @@ DEFAULT_PARAMS = {
     'outFile': r'finalImg.fits',
     'maxIter': 100,
     'mu': 0.001,  # SNR 200
+    'method': 'Fusion',
 }
 
 
 class MVDConfigDialog(QtGui.QDialog):
+
+    METHODS = ['Fusion', 'Lucy-Richardson', 'MVD-Wiener', 'MVD-MAPGG']
 
     def __init__(self, defaults=None, parent=None):
         super(MVDConfigDialog, self).__init__(parent)
         self.ui = Ui_MVDConfigDialog()
         self.ui.setupUi(self)
         self.params = defaults
+        self.setupMethods()
         self.setupParams()
         # connect signal/slots
         self.ui.mBtnOK.clicked.connect(self.accept)
         self.ui.mBtnCancel.clicked.connect(self.reject)
         self.ui.mBtnChooseInput.clicked.connect(self.onChooseInputDirectory)
         self.ui.mBtnChoosePSF.clicked.connect(self.onChoosePSFFile)
+
+    def setupMethods(self):
+        for method in self.METHODS:
+            self.ui.mCbMethod.addItem(method)
 
     def setupParams(self):
         if self.params is not None:
@@ -44,6 +52,11 @@ class MVDConfigDialog(QtGui.QDialog):
             self.ui.mEdOutputFile.setText(self.params['outFile'])
             self.ui.mSpMaxIter.setValue(self.params['maxIter'])
             self.ui.mEdMu.setText('%.4f' % self.params['mu'])
+            if self.params['method'] in self.METHODS:
+                idx = self.METHODS.index(self.params['method'])
+                self.ui.mCbMethod.setCurrentIndex(idx)
+            else:
+                self.ui.mCbMethod.setCurrentIndex(0)
 
     @QtCore.pyqtSlot()
     def onChooseInputDirectory(self):
@@ -79,6 +92,8 @@ class MVDConfigDialog(QtGui.QDialog):
         self.params['outFile'] = str(self.ui.mEdOutputFile.text())
         self.params['maxIter'] = self.ui.mSpMaxIter.value()
         self.params['mu'] = float(self.ui.mEdMu.text())
+        idx = self.ui.mCbMethod.currentIndex()
+        self.params['method'] = self.METHODS[idx]
 
     @staticmethod
     def getOptions(argv=[]):

@@ -264,6 +264,16 @@
       <item>
        <widget class="QLineEdit" name="mEdAngleRange"/>
       </item>
+      <item>
+       <widget class="QLabel" name="label_14">
+        <property name="text">
+         <string>Method</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="mCbMethod"/>
+      </item>
      </layout>
     </item>
     <item>
