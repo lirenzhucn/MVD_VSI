@@ -16,6 +16,7 @@ DEFAULT_PARAMS = {
     'maxIter': 100,
     'mu': 0.001,  # SNR 200
     'method': 'Fusion',
+    'showImage': False
 }
 
 
@@ -35,6 +36,8 @@ class MVDConfigDialog(QtGui.QDialog):
         self.ui.mBtnCancel.clicked.connect(self.reject)
         self.ui.mBtnChooseInput.clicked.connect(self.onChooseInputDirectory)
         self.ui.mBtnChoosePSF.clicked.connect(self.onChoosePSFFile)
+        # flag if the dialog was closed by OK or Cancel
+        self.canceled = True
 
     def setupMethods(self):
         for method in self.METHODS:
@@ -57,6 +60,10 @@ class MVDConfigDialog(QtGui.QDialog):
                 self.ui.mCbMethod.setCurrentIndex(idx)
             else:
                 self.ui.mCbMethod.setCurrentIndex(0)
+            if self.params['showImage']:
+                self.ui.mCkShowImage.setChecked(True)
+            else:
+                self.ui.mCkShowImage.setChecked(False)
 
     @QtCore.pyqtSlot()
     def onChooseInputDirectory(self):
@@ -78,7 +85,11 @@ class MVDConfigDialog(QtGui.QDialog):
     @QtCore.pyqtSlot()
     def accept(self):
         self.updateParams()
+        self.canceled = False
         super(MVDConfigDialog, self).accept()
+
+    def isCanceled(self):
+        return self.canceled
 
     def updateParams(self):
         if self.params is None:
@@ -94,6 +105,7 @@ class MVDConfigDialog(QtGui.QDialog):
         self.params['mu'] = float(self.ui.mEdMu.text())
         idx = self.ui.mCbMethod.currentIndex()
         self.params['method'] = self.METHODS[idx]
+        self.params['showImage'] = self.ui.mCkShowImage.isChecked()
 
     @staticmethod
     def getOptions(argv=[]):
@@ -106,6 +118,8 @@ class MVDConfigDialog(QtGui.QDialog):
         configDialog = MVDConfigDialog(params)
         configDialog.show()
         app.exec_()
+        if configDialog.isCanceled():
+            return None
         # update the temp file
         with open(TEMP_PARAMS_JSON, 'w') as f:
             json.dump(configDialog.params, f)
@@ -128,9 +142,12 @@ def processIndices(indexString):
     for phrase in phrases:
         if ':' in phrase:
             words = phrase.split(':')
-            if len(words) == 2 and words[0].strip().isdigit() and\
-                    words[1].strip().isdigit():
+            if not all([w.strip().isdigit() for w in words]):
+                return []
+            if len(words) == 2:
                 l = l + range(int(words[0]), int(words[1])+1)
+            elif len(words) == 3:
+                l = l + range(int(words[0]), int(words[2])+1, int(words[1]))
             else:
                 return []
         else:
@@ -194,6 +211,9 @@ def mvdFusion(params):
 
 def main():
     params = MVDConfigDialog.getOptions(sys.argv)
+    if params is None:
+        print 'Canceled.'
+        return
     finalImg = mvdFusion(params)
     if not params['outFile'].endswith('.fits'):
         params['outFile'] = params['outFile'] + '.fits'
@@ -202,8 +222,9 @@ def main():
     hdu = pyfits.PrimaryHDU(finalImg)
     hdu.writeto(outFile, clobber=True)
     print 'saved.'
-    plt.imshow(finalImg, cmap='hot', vmin=0.0, vmax=0.5*np.amax(finalImg))
-    plt.show()
+    if params['showImage']:
+        plt.imshow(finalImg, cmap='hot', vmin=0.0, vmax=0.5*np.amax(finalImg))
+        plt.show()
 
 
 import sys

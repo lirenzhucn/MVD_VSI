@@ -293,6 +293,13 @@
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout_8">
       <item>
+       <widget class="QCheckBox" name="mCkShowImage">
+        <property name="text">
+         <string>Show Image</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QLabel" name="label_12">
         <property name="text">
          <string>Output File</string>
