@@ -116,6 +116,7 @@ import pyfits
 import numpy as np
 import scipy.ndimage as spnd
 from mvd_algorithms import mvd_lr, mvd_wiener, mvd_map_tikhonov
+import matplotlib.pyplot as plt
 
 
 def processIndices(indexString):
@@ -145,8 +146,6 @@ def generateFileName(inputDir, pattern, idx):
 
 
 def mvdFusion(params):
-    if not params['outFile'].endswith('.fits'):
-        params['outFile'] = params['outFile'] + '.fits'
     psf0 = pyfits.getdata(params['psfFile'])
     # generate actual indices
     params['indices'] = processIndices(params['indicesString'])
@@ -190,15 +189,24 @@ def mvdFusion(params):
     else:  # including 'Fusion'
         finalImg = initImg
     print 'done.'
+    return finalImg
+
+
+def main():
+    params = MVDConfigDialog.getOptions(sys.argv)
+    finalImg = mvdFusion(params)
+    if not params['outFile'].endswith('.fits'):
+        params['outFile'] = params['outFile'] + '.fits'
     outFile = os.path.join(params['inputDir'], params['outFile'])
     print 'saving to %s...' % (outFile)
     hdu = pyfits.PrimaryHDU(finalImg)
     hdu.writeto(outFile, clobber=True)
     print 'saved.'
+    plt.imshow(finalImg, cmap='hot', vmin=0.0, vmax=0.5*np.amax(finalImg))
+    plt.show()
 
 
 import sys
 
 if __name__ == '__main__':
-    params = MVDConfigDialog.getOptions(sys.argv)
-    mvdFusion(params)
+    main()
