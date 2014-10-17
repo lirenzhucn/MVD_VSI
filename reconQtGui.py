@@ -2,6 +2,8 @@
 
 from PyQt4 import QtGui, QtCore
 from ui_mvdConfigDialog import Ui_MVDConfigDialog
+import os.path
+import json
 
 DEFAULT_PARAMS = {
     'offset': (0, 0),  # shift offset
@@ -80,15 +82,22 @@ class MVDConfigDialog(QtGui.QDialog):
 
     @staticmethod
     def getOptions(argv=[]):
+        TEMP_PARAMS_JSON = os.path.expanduser('~/.tmp/tmpReconQtGui.json')
         app = QtGui.QApplication(argv)
-        configDialog = MVDConfigDialog(DEFAULT_PARAMS)
+        params = DEFAULT_PARAMS
+        if os.path.isfile(TEMP_PARAMS_JSON):
+            with open(TEMP_PARAMS_JSON) as f:
+                params = json.load(f)
+        configDialog = MVDConfigDialog(params)
         configDialog.show()
         app.exec_()
+        # update the temp file
+        with open(TEMP_PARAMS_JSON, 'w') as f:
+            json.dump(configDialog.params, f)
         return configDialog.params
 
 
 import sys
-import json
 
 if __name__ == '__main__':
     params = MVDConfigDialog.getOptions(sys.argv)
