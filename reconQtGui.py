@@ -16,7 +16,8 @@ DEFAULT_PARAMS = {
     'maxIter': 100,
     'mu': 0.001,  # SNR 200
     'method': 'Fusion',
-    'showImage': False
+    'show': False,
+    'initImg': '',
 }
 
 
@@ -36,6 +37,7 @@ class MVDConfigDialog(QtGui.QDialog):
         self.ui.mBtnCancel.clicked.connect(self.reject)
         self.ui.mBtnChooseInput.clicked.connect(self.onChooseInputDirectory)
         self.ui.mBtnChoosePSF.clicked.connect(self.onChoosePSFFile)
+        self.ui.mBtnChooseInitImage.clicked.connect(self.onChooseInitImage)
         # flag if the dialog was closed by OK or Cancel
         self.canceled = True
 
@@ -60,7 +62,7 @@ class MVDConfigDialog(QtGui.QDialog):
                 self.ui.mCbMethod.setCurrentIndex(idx)
             else:
                 self.ui.mCbMethod.setCurrentIndex(0)
-            if self.params['showImage']:
+            if self.params['show']:
                 self.ui.mCkShowImage.setChecked(True)
             else:
                 self.ui.mCkShowImage.setChecked(False)
@@ -78,9 +80,18 @@ class MVDConfigDialog(QtGui.QDialog):
         path = str(self.ui.mEdPSFFile.text())
         path = QtGui.QFileDialog.\
             getOpenFileName(self, "Open PSF File", path,
-                            "Images (*.fits *.tiff *.tif)")
+                            "FITS Images (*.fits)")
         if not path.isNull():
             self.ui.mEdPSFFile.setText(path)
+
+    @QtCore.pyqtSlot()
+    def onChooseInitImage(self):
+        path = str(self.ui.mEdInitImageFile.text())
+        path = QtGui.QFileDialog.\
+            getOpenFileName(self, "Open Init. Image", path,
+                            "FITS Images (*.fits)")
+        if not path.isNull():
+            self.ui.mEdInitImageFile.setText(path)
 
     @QtCore.pyqtSlot()
     def accept(self):
@@ -105,7 +116,7 @@ class MVDConfigDialog(QtGui.QDialog):
         self.params['mu'] = float(self.ui.mEdMu.text())
         idx = self.ui.mCbMethod.currentIndex()
         self.params['method'] = self.METHODS[idx]
-        self.params['showImage'] = self.ui.mCkShowImage.isChecked()
+        self.params['show'] = self.ui.mCkShowImage.isChecked()
 
     @staticmethod
     def getOptions(argv=[]):
@@ -189,10 +200,14 @@ def mvdFusion(params):
     print 'finished loading and transforming data from files'
     # create initial image
     initImg = np.zeros(imgList[0].shape)
-    print 'creating additive image as initial guess'
-    for img in imgList:
-        initImg = initImg + img
-    initImg = initImg / float(len(params['indices']))
+    if not params['initImg']:
+        print 'creating additive image as initial guess'
+        for img in imgList:
+            initImg = initImg + img
+        initImg = initImg / float(len(params['indices']))
+    else:
+        print 'loading initial image from %s ...' % (params['initImg'])
+        initImg = pyfits.getdata(params['initImg'])
     # do actual work
     print 'reconstructing with %s method...' % (params['method'])
     if params['method'] == 'Lucy-Richardson':
@@ -222,7 +237,7 @@ def main():
     hdu = pyfits.PrimaryHDU(finalImg)
     hdu.writeto(outFile, clobber=True)
     print 'saved.'
-    if params['showImage']:
+    if params['show']:
         plt.imshow(finalImg, cmap='hot', vmin=0.0, vmax=0.5*np.amax(finalImg))
         plt.show()
 
