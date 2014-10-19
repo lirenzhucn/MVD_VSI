@@ -125,7 +125,7 @@ class MVDConfigDialog(QtGui.QDialog):
         params = DEFAULT_PARAMS
         if os.path.isfile(TEMP_PARAMS_JSON):
             with open(TEMP_PARAMS_JSON) as f:
-                params = json.load(f)
+                params.update(json.load(f))
         configDialog = MVDConfigDialog(params)
         configDialog.show()
         app.exec_()
